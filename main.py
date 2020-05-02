@@ -1,6 +1,43 @@
 from flask import Flask, render_template, redirect, url_for, session
 import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
 import textblob
+import datetime
+import requests
+import numpy as np
+
+
+def get_data ():
+  url = "https://api.covid19api.com/total/country/singapore"
+  response = requests.get(url)
+  data_ = response.json()
+  # Country, CountryCode, Province, City, CityCode, Lat, Lon, Confirmed, Deaths, Recovered, Date
+  dates = np.array([])
+  confirmed_cases = np.array([])
+  death_cases = np.array([])
+  recovered_cases = np.array([])
+
+  for data in data_:
+    date_ = data["Date"].split("T")[0].split("-")
+    date = datetime.datetime(int(date_[0]), int(date_[1]), int(date_[2]))
+    dates = np.append(dates, date)
+    confirmed_cases = np.append(confirmed_cases, int(data["Confirmed"]))
+    death_cases = np.append(death_cases, int(data["Deaths"]))
+    recovered_cases = np.append(recovered_cases, int(data["Recovered"]))
+
+  fig, ax = plt.subplots()
+  ax.plot(dates, confirmed_cases, label="Confirmed Cases")
+  ax.plot(dates, death_cases, label="Death Cases")
+  ax.plot(dates, recovered_cases, label="Recovered Cases")
+  ax.set_xlabel("Date")
+  ax.set_ylabel("Number of Cases")
+  ax.set_title("Covid-19 in Singapore")
+  ax.xaxis.set_minor_locator(mdates.DayLocator(interval=1))
+  ax.xaxis.set_major_locator(mdates.DayLocator(interval=15))
+  ax.xaxis.set_major_formatter(mdates.DateFormatter("%m-%d"))
+  ax.legend()
+  fig.savefig("static/img/data.png")
+  
 
 def get_age (age):
   '''
@@ -52,9 +89,9 @@ def process_data (filename):
       age = int(temp[-1])
       statement = temp[1:len(temp)-1]
     if filename != "people_responses_untagged":
-      people_responses[i] = [date, statement, age, sentiment_metric]
+      people_responses[i] = [date, statement[0], age, sentiment_metric]
     else:
-      people_responses[i] = [date, statement, age]
+      people_responses[i] = [date, statement[0], age]
   return people_responses
 
 app = Flask(__name__)
@@ -69,7 +106,7 @@ def index ():
   people_responses_untagged[0].append("Sentiment_Metric")
   for i in range (1, len(people_responses_untagged)):
     # print(people_responses_untagged[i][1][0].rstrip())
-    text = people_responses_untagged[i][1][0].rstrip()
+    text = people_responses_untagged[i][1].rstrip()
     response = textblob.TextBlob(text)
     polarity = response.sentiment.polarity
     # -1 to 1 => 1 to 10
@@ -145,17 +182,27 @@ def index ():
     return sentiment_by_category
 
 
-  average_sentiment = get_average_sentiment(people_responses_tagged)
-  percentage_of_negative_sentiment = get_percentage_of_negative_sentiment(people_responses_tagged)
-  sentiment_by_age = get_sentiment_by_age(people_responses_tagged)
-  sentiment_by_category = get_sentiment_by_category(people_responses_tagged)
+  to_process = [people_responses_tagged, people_responses_untagged]
+  for data in to_process:
+    average_sentiment = get_average_sentiment(data)
+    percentage_of_negative_sentiment = get_percentage_of_negative_sentiment(data)
+    sentiment_by_age = get_sentiment_by_age(data)
+    sentiment_by_category = get_sentiment_by_category(data)
+    if data == people_responses_tagged:
+      data_people_responses_tagged = {"average_sentiment": average_sentiment,
+                                    "percentage_of_negative_sentiment": percentage_of_negative_sentiment,
+                                    "sentiment_by_age": sentiment_by_age,
+                                    "sentiment_by_category": sentiment_by_category}
+    else:
+      data_people_responses_untagged = {"average_sentiment": average_sentiment,
+                                      "percentage_of_negative_sentiment": percentage_of_negative_sentiment,
+                                      "sentiment_by_age": sentiment_by_age,
+                                      "sentiment_by_category": sentiment_by_category}
 
   return render_template("index.html", people_responses_tagged=people_responses_tagged[1:],
                           people_responses_untagged=people_responses_untagged[1:],
-                          data = {"average_sentiment": average_sentiment,
-                                  "percentage_of_negative_sentiment": percentage_of_negative_sentiment,
-                                  "sentiment_by_age": sentiment_by_age,
-                                  "sentiment_by_category": sentiment_by_category})
+                          data_people_responses_tagged=data_people_responses_tagged,
+                          data_people_responses_untagged=data_people_responses_untagged)
 
 if __name__ == "__main__":
   app.run(host="0.0.0.0", debug=True)

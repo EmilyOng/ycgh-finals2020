@@ -89,9 +89,9 @@ def process_data (filename):
       age = int(temp[-1])
       statement = temp[1:len(temp)-1]
     if filename != "people_responses_untagged":
-      people_responses[i] = [date, statement[0], age, sentiment_metric]
+      people_responses[i] = [date, "".join(statement), age, sentiment_metric]
     else:
-      people_responses[i] = [date, statement[0], age]
+      people_responses[i] = [date, "".join(statement), age]
   return people_responses
 
 app = Flask(__name__)

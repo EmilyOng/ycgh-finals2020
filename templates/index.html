@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <h3>People's Responses (Tagged)</h3>
+  <h5>Data Processing</h5>
+  <ul>
+    {% for data_ in data %}
+      {% if data_ == "sentiment_by_age" %}
+        <li><u><strong>{{data_}}</strong></u></li>
+        <ol>
+          {% for data__ in data[data_] %}
+            <li><strong>{{data__}}</strong>: {{data[data_][data__]["avg_sentiment_metric"]}}</li>
+          {% endfor %}
+        </ol>
+        <img class="responsive-img" src="{{url_for('static', filename='img/32-Sentiment by Age Group.png')}}">
+      {% else %}
+        <li><u><strong>{{data_}}</strong></u>: {{data[data_]}}</li>
+      {% endif %}
+    {% endfor %}
+  </ul>
+  <h5>Raw Data</h5>
+  <table>
+    <tr>
+      <th>Date_YYYYMMDD</th>
+      <th>Statement</th>
+      <th>Age</th>
+      <th>Sentiment_Metric</th>
+    </tr>
+    {% for response in people_responses_tagged %}
+      <tr>
+        <td>{{response[0]}}</td>
+        <td>{{response[1]}}</td>
+        <td>{{response[2]}}</td>
+        <td>{{response[3]}}</td>
+      </tr>
+    {% endfor %}
+  </table>
+{% endblock content %}
